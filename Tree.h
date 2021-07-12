@@ -48,10 +48,7 @@ char** TREE_KeyList(TREE*);
 double TREE_AverageDepth(TREE*);
 
 // returns the max depth of a given node
-unsigned TREE_MaxDepth(TREE*);
-
-// re-balances a whole tree O(n) time
-void TREE_RebalanceAll(TREE *);
+unsigned TREE_Height(TREE*);
 
 // returns the nth member in sorted order of the TREE, returns NULL if invalid n
 //returns the actual key currently being used by the TREE
