@@ -34,11 +34,12 @@ struct node{
     node *r;
 };
  
-void node_Free(node *n){
+void node_Free(node *n , void (*freeing_function)(void*) ){
     if(n!=NULL){
-        node_Free(n->l);
-        node_Free(n->r);
+        node_Free(n->l , freeing_function);
+        node_Free(n->r , freeing_function);
         free(n->key);
+        freeing_function(n->val);
         free(n);
     }
     return;
@@ -451,9 +452,14 @@ TREE* TREE_Empty(){
     return d;
 }
 
-// free's a given dictionary
-// everything besides whatever the void pointers were pointing at
-void TREE_Free(TREE *d){ node_Free(d->head);  free(d);  return; }
+// TODO: MAKE THIS A HIGHER ORDER FUNCTION THAT TAKES A FUNTION AS INPUT TO FREE THE VOID POINTERS
+// Free's a given Tree
+// the second field is for a function that takes the "values" of the tree, stored as void pointers and frees them
+void TREE_Free(TREE *d , void (*freeing_function)(void*) ){ 
+    node_Free(d->head , freeing_function);  
+    free(d);  
+    return; 
+}
 
 // if the key already exists, changes the value to the inputed void pointer and frees the callers char *k
 // if the key does not exist, adds the key value pair to the dictionary (using the callers char *k)
@@ -488,16 +494,20 @@ void TREE_Add(TREE *d , char *k , void *v){
 void* TREE_Search(TREE *d , char *k){ return node_Search(d->head , k);  }
 
 
-// removes the key val pair associated with the inputed char* does not free whatever the void pointer was pointing to
-// will free the key in the dictorary, but not the callers char *k
-void TREE_Remove(TREE *d , char *k){
-    if(node_Search(d->head , k)==NULL) return;
+// removes the key val pair associated with the inputted char* does not free whatever the void pointer was pointing to
+// will free the key in the tree, but not the callers char *k
+// will also free the void pointer at char *k using the third field inputed function.
+void TREE_Remove(TREE *d , char *k , void (*freeing_function)(void*) ){
+    void *value = node_Search(d->head , k);
+    if(value==NULL) return;
+    
 
     if(d->size==1){
-        node_Free(d->head);
+        node_Free(d->head, freeing_function);
         d->head = NULL;
     }
     else{
+        freeing_function(value);
         char **to_fix = (char**) malloc( 1 * sizeof(char*) );
         d->head = node_Remove(d->head, k, to_fix);
         d->head = node_RebalanceDirectionAVL(d->head , *(to_fix) );

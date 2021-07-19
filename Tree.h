@@ -20,10 +20,10 @@ typedef struct TREE TREE;
 // returns a empty Tree
 TREE* TREE_Empty();
 
-
+// TODO: MAKE THIS A HIGHER ORDER FUNCTION THAT TAKES A FUNTION AS INPUT TO FREE THE VOID POINTERS
 // Free's a given Tree
-// will NOT free any underlying structures the void pointers were pointing at
-void TREE_Free(TREE*);
+// the second field is for a function that takes the "values" of the tree, stored as void pointers and frees them
+void TREE_Free(TREE* , void (void*) );
 
 // adds a given key val pair, with the char* being the key and the void* being the val
 // if a the char already exists, the val (void pointer) will be overwritten and it is the callers responsibility to ensure this overwrite does not create memory leaks
@@ -36,7 +36,8 @@ void* TREE_Search(TREE* , char*);
 
 // removes the key val pair associated with the inputted char* does not free whatever the void pointer was pointing to
 // will free the key in the tree, but not the callers char *k
-void TREE_Remove(TREE* , char*);
+// will also free the void pointer at char *k using the third field inputed function.
+void TREE_Remove(TREE* , char* , void (void*) );
 
 // returns the number of elements in the given TREE
 unsigned TREE_Size(TREE*);
@@ -57,7 +58,7 @@ char *TREE_nth(TREE * , unsigned);
 //returns the number of elements that come before (BUT NOT AT) the inputted char
 // the given char does not have to exist in the TREE and is not freed or mutated during runtime
 // ie: if the inputted char is in the TREE, it is returning the index
-//     if the inputted char is NOT in the TREE, returns numbers of elements that come before
+//     if the inputted char is NOT in the TREE, returns numbers of elements that come before 
 unsigned TREE_Position( TREE * , char * );
 
 
