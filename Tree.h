@@ -2,11 +2,11 @@
 
 // Interface / Specifications for binary Tree
 
-// all keys must be "strings", in C this means a '\0' terminated char* must end them
+// all keys must be reprsented by a void pointer, with inputed compare function upon initialization of tree
 // all values must be void pointers 
 
 // max number of elements in a given TREE is the max value of a unsigned int (4,294,967,295)
-// though I wouldn't recommend going past a few million
+
 
 
 
@@ -18,47 +18,46 @@ typedef struct TREE TREE;
 
 
 // returns a empty Tree
-TREE* TREE_Empty();
+TREE* TREE_Empty( int (*cmp) (void*, void*) , void (*free_key) (void*) , void (*free_val) (void*) );
 
-// TODO: MAKE THIS A HIGHER ORDER FUNCTION THAT TAKES A FUNTION AS INPUT TO FREE THE VOID POINTERS
 // Free's a given Tree
-// the second field is for a function that takes the "values" of the tree, stored as void pointers and frees them
-void TREE_Free(TREE* , void (void*) );
+void TREE_Free(TREE*);
 
-// adds a given key val pair, with the char* being the key and the void* being the val
-// if a the char already exists, the val (void pointer) will be overwritten and it is the callers responsibility to ensure this overwrite does not create memory leaks
-// uses the callers char *k in the TREE (DO NOT FREE IT AFTER CALLING)
-void TREE_Add(TREE* , char* , void*);
+// adds a given:  void *key, void *val   pair,
+// if the key already exists in the tree, the inputed val replaces one previously stored (frees the previously stored val)
+// uses the callers key in the TREE (DO NOT FREE IT AFTER CALLING)
+void TREE_Add(TREE* , void * , void *);
 
-// returns the void pointer associated with the given char* in the TREE if it exists, returns NULL if it doesn't
-// does not free in inputted char *k
-void* TREE_Search(TREE* , char*);
+// returns the void pointer associated with the given void* key in the TREE if it exists, returns NULL if it doesn't
+// does not free in inputted void pointer key
+void* TREE_Search(TREE* , void*);
 
-// removes the key val pair associated with the inputted char* does not free whatever the void pointer was pointing to
-// will free the key in the tree, but not the callers char *k
-// will also free the void pointer at char *k using the third field inputed function.
-void TREE_Remove(TREE* , char* , void (void*) );
+// removes (and frees) the key val pair associated with the inputted   void *key   
+// does not free the callers  void *key
+void TREE_Remove(TREE* , void* );
 
 // returns the number of elements in the given TREE
 unsigned TREE_Size(TREE*);
 
 // returns a sorted list of the keys in the given TREE
-char** TREE_KeyList(TREE*);
+void** TREE_KeyList(TREE*);
 
-// returns the average depth of all nodes
+// gives the average of the depths of all the nodes
+// the root of a tree has a depth of 1, the roots child a depth of 2, the roots grandchild a depth of 3, etc etc
 double TREE_AverageDepth(TREE*);
 
-// returns the max depth of a given node
+// returns the hieght of the 'root/head' of the tree
 unsigned TREE_Height(TREE*);
 
-// returns the nth member in sorted order of the TREE, returns NULL if invalid n
+// returns the key of the nth member in sorted order of the TREE, returns NULL if invalid n
 //returns the actual key currently being used by the TREE
-char *TREE_nth(TREE * , unsigned);
+void *TREE_nth(TREE * , unsigned);
 
-//returns the number of elements that come before (BUT NOT AT) the inputted char
-// the given char does not have to exist in the TREE and is not freed or mutated during runtime
-// ie: if the inputted char is in the TREE, it is returning the index
-//     if the inputted char is NOT in the TREE, returns numbers of elements that come before 
-unsigned TREE_Position( TREE * , char * );
+//returns the number of elements that come before (BUT NOT AT) the inputed key
+
+// the given key does not have to exist in the TREE and is not freed or mutated during runtime
+// ie: if the inputted key is in the TREE, it is returning the index
+//     if the inputted key is NOT in the TREE, returns numbers of elements that come before 
+unsigned TREE_Position( TREE * , void * );
 
 

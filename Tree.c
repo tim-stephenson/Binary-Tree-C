@@ -2,18 +2,18 @@
 
 // Implementation for binary Tree
 
-// all keys must be "strings", in C this means a '\0' terminated char* must end them
+// all keys must be reprsented by a void pointer, with inputed compare function upon initialization of tree
 // all values must be void pointers 
 
 // max number of elements in a given TREE is the max value of a unsigned int (4,294,967,295)
 
 
-//Will sure AVL Rebalancing to keep the Binary Search Tree balanced
+//Will use AVL Rebalancing to keep the Binary Search Tree balanced
 // the term height refers to the the longest path from a given node to a empty node
 // ie a "NULL" node has a hieght of 0, a leaf node has a height of 1, and the height of any given node is
 // the max height of its two children + 1 
 
-#include <string.h>
+// #include <string.h>
 
 #include <stdlib.h>
 
@@ -28,24 +28,24 @@ typedef struct node node;
 struct node{
     unsigned int size;
     unsigned short int height;
-    char *key;
+    void *key;
     void *val;
     node *l;
     node *r;
 };
  
-void node_Free(node *n , void (*freeing_function)(void*) ){
+void node_Free(node *n , void (*free_key) (void*) , void (*free_val) (void*) ) {
     if(n!=NULL){
-        node_Free(n->l , freeing_function);
-        node_Free(n->r , freeing_function);
-        free(n->key);
-        freeing_function(n->val);
+        node_Free(n->l , free_key , free_val);
+        node_Free(n->r , free_key , free_val);
+        (*free_key)(n->key);
+        (*free_val)(n->val);
         free(n);
     }
     return;
 }
 
-node *node_Leaf(char *k , void *v ){
+node *node_Leaf(void *k , void *v ){
     node *n = (node*) malloc( sizeof(node) );
     n->size = 1;
     n->height = 1;
@@ -75,10 +75,13 @@ void node_FixSize(node *n){
 //assuming childrens heights are correct, fix the height of node *n 
 void node_FixHeight(node *n){
     unsigned short int left_height = node_Height(n->l) , right_height = node_Height(n->r) ;
+
     // left child's node has a greater height:
     if(left_height > right_height) n->height = left_height + 1;
+
     // right child's node has a greater or equal height:
     else n->height = right_height + 1;
+
     return;
 }
 
@@ -89,34 +92,34 @@ short int node_HeightDiffernce(node *n){
 }
 
 
-void node_FillKeys(node *n, char **string_list){
+void node_FillKeys(node *n, void **key_list){
     if(n==NULL) return;
     // element itself
     unsigned items_leftward = node_Size(n->l);
 
-    string_list[items_leftward] = n->key;
+    key_list[items_leftward] = n->key;
 
     // fill left
-    node_FillKeys(n->l,string_list);
+    node_FillKeys(n->l,key_list);
 
     // fill right
-    node_FillKeys(n->r, &string_list[items_leftward+1] );
+    node_FillKeys(n->r, key_list + (items_leftward+1) );
 
     return;
 }
 
 
-void *node_Search(node *n, char *k){
+void *node_Search(node *n, void *k, int (*cmp) (void*,void*) ){
     if(n==NULL) return NULL;
-    int i = strcmp(k,n->key);
+    int i = (*cmp)(k,n->key);
     //Equal
     if(i==0) return n->val;
 
     // Less
-    if(i<0) return node_Search(n->l , k);
+    if(i<0) return node_Search(n->l , k ,cmp);
 
     // Greater (i>0)
-    return node_Search(n->r , k);
+    return node_Search(n->r , k, cmp);
 }
 
 // to call function, call node_AverageDepth(n , n->size, 1)
@@ -126,15 +129,19 @@ double node_AverageDepth(node *n, unsigned int TotalSize, unsigned short int dep
 }
 
 
-void node_Assign(node *n , char *k , void *v){
+void node_Assign(node *n , void *k , void *v, int (*cmp) (void*,void*), void (*free_val) (void*) ){
     assert(n!=NULL);
-    int i = strcmp(k,n->key);
+    int i = (*cmp)(k,n->key);
+
     // found the key value pair
-    if(i==0) n->val = v;
+    if(i==0){
+        (*free_val)(n->val);
+        n->val = v;
+    } 
     // Less tthan
-    if(i<0) node_Assign(n->l , k , v);
+    if(i<0) node_Assign(n->l , k , v, cmp, free_val);
     // greater than
-    if(i>0) node_Assign(n->r , k , v);
+    if(i>0) node_Assign(n->r , k , v, cmp, free_val);
 
     return;
 }
@@ -174,7 +181,7 @@ node* node_ChildDirection(node *n, bool go_right){ assert(n!=NULL); if(go_right)
 //allocate space for min_max_child to store one node pointer, and free it afterwards
 //precondition:
 // the mix or max will not be the head of the intial function call
-node *node_RemoveMinMax(node *n, bool go_right, char **to_fix, node **min_max_child){
+node *node_RemoveMinMax(node *n, bool go_right, void **to_fix, node **min_max_child){
     assert(n!=NULL);
     if(go_right && n->r == NULL){
         *(min_max_child) = n->l;
@@ -208,10 +215,10 @@ node *node_RemoveMinMax(node *n, bool go_right, char **to_fix, node **min_max_ch
 }
 
 //will merge two nodes who's heights differ by no more than +=1 (ie two previous children of a now deleted parent)
-// the outputed out will be <= 1 + max( node_Height(left) , node_Height(right) )
+// the outputed node's height out will be <= 1 + max( node_Height(left) , node_Height(right) )
 //Precondition:
 // ( left !=NULL || right != NULL ) aka do not call merge on two empty nodes, as there is nothing for to_fix to be pointed at
-node* node_Merge(node *left , node *right, char **to_fix){
+node* node_Merge(node *left , node *right, void **to_fix){
     assert( left !=NULL || right != NULL );
     if (left==NULL){
         *(to_fix) = right->key;
@@ -256,15 +263,18 @@ node* node_Merge(node *left , node *right, char **to_fix){
 }
 
 //prconditions:
-// a node with char *k exists in the tree with n at the root
-// prior to adding the node with char *k, it was a balanced AVL tree
-node* node_RebalanceDirectionAVL(node *n, char *k){
-    if(n==NULL) return NULL;
-    int i = strcmp(k,n->key);
+// a node with void *k exists in the tree with n at the root
+
+// the node that the inputted void *k corresponds too and all of its parents, may be unbalanced by at most one 
+// (either doubley left/right heavy, never tripley left/right heavy or more)
+// all other nodes are balanced
+node* node_RebalanceDirectionAVL(node *n, void *k, int (*cmp) (void*,void*) ){
+    if(n==NULL) return NULL; //maybe assert(n!=NULL)
+    int i = (*cmp)(k,n->key);
     // k is to the left
-    if(i<0) n->l = node_RebalanceDirectionAVL(n->l , k);
+    if(i<0) n->l = node_RebalanceDirectionAVL(n->l , k, cmp);
     // k is to the right
-    if(i>0) n->r = node_RebalanceDirectionAVL(n->r , k);
+    if(i>0) n->r = node_RebalanceDirectionAVL(n->r , k, cmp);
     node_FixHeight(n);
 
     if( node_HeightDiffernce(n) < -1 || 1 < node_HeightDiffernce(n) ){
@@ -303,20 +313,20 @@ node* node_RebalanceDirectionAVL(node *n, char *k){
 
 
 // inserts the key val pair to the node tree
-// precondition: n is a valid node, char *k does not exist in the tree
-void node_Insert(node *n, char *k, void *v){
+// precondition: n is a valid node, void *k does not exist in the tree
+void node_Insert(node *n, void *k, void *v, int (*cmp) (void*,void*) ){
     assert(n!=NULL);
-    int i = strcmp(k,n->key);
+    int i = (*cmp)(k,n->key);
 
     // Less
     if(i<0){
         if(n->l==NULL) n->l = node_Leaf(k,v);
-        else node_Insert(n->l , k , v);
+        else node_Insert(n->l , k , v, cmp);
     }
     // greater
     if(i>0){
         if(n->r==NULL) n->r = node_Leaf(k,v);
-        else node_Insert(n->r , k , v);
+        else node_Insert(n->r , k , v, cmp);
     }
     // precondition assures i==0 is not a possiblity 
     node_FixSize(n);
@@ -324,29 +334,30 @@ void node_Insert(node *n, char *k, void *v){
     return;
 }
 
-//remove the node with the char *k from the tree
+//remove the node with the void *k from the tree
 //precondition: 
 // node_Search(n , k) != NULL
 // on the intial call on the root of the tree, n->size >= 2  (there must be a node left once the specified node is deleted)
 //points the string pointer to_fix to the node to call node_RebalanceDirectionAVL on in order to maintain AVL property
-// the only nodes that have potentially changed heightts are "to_fix" and its parents
-node *node_Remove(node *n, char *k, char **to_fix){
+// the only nodes that have potentially changed heights are "to_fix" and its parents
+node *node_Remove(node *n, void *k, void **to_fix, int (*cmp) (void*,void*)  , void (*free_key) (void*) , void (*free_val) (void*)  ){
     assert(n!=NULL);
-    int i = strcmp(k,n->key);
+    int i = (*cmp)(k,n->key);
     node *to_return = n;
 
     //at the node to remove
     if(i==0){
         if(n->l==NULL && n->r==NULL) to_return = NULL;
         else to_return = node_Merge(n->l,n->r , to_fix);
-        free(n->key);
+        (*free_key)(n->key);
+        (*free_val)(n->val);
         free(n);
     }
     else{
         // in case n->l or n->r is a leaf of only the node we want to delete, we save its parents key as the node to starting fixing from
         *(to_fix) = n->key;
-        if(i<0) n->l = node_Remove(n->l , k , to_fix);
-        if(i>0) n->r = node_Remove(n->r , k , to_fix);
+        if(i<0) n->l = node_Remove(n->l , k , to_fix, cmp , free_key , free_val );
+        if(i>0) n->r = node_Remove(n->r , k , to_fix, cmp , free_key , free_val );
         node_FixSize(n);
         node_FixHeight(n);
     }
@@ -355,8 +366,8 @@ node *node_Remove(node *n, char *k, char **to_fix){
 }
 
 // precondition 0<= i < n->size
-//to call from head node, give 0 as nodes_leftward
-char *node_nth(node *n, unsigned i, unsigned nodes_leftward){
+//to call from head node, give 0 as nodes_leftward : node_nth( head_node , i , 0) where i is the index of desired node
+void *node_nth(node *n, unsigned i, unsigned nodes_leftward){
     assert(n!=NULL);
     unsigned true_nodes_leftward = nodes_leftward + node_Size(n->l);
 
@@ -371,17 +382,17 @@ char *node_nth(node *n, unsigned i, unsigned nodes_leftward){
 
 }
 
-unsigned node_Position( node *n , char *k ){
+unsigned node_Position( node *n , void *k , int (*cmp) (void*,void*) ){
     if(n==NULL) return 0;
-    int i = strcmp(k , n->key);
+    int i = (*cmp)(k , n->key);
     // are at the given node
     if (i==0) return node_Size(n->l);
 
     //go left
-    if(i<0) return node_Position(n->l , k);
+    if(i<0) return node_Position(n->l , k, cmp);
 
     //go right (i>0)
-    return 1 + node_Size(n->l) + node_Position(n->r , k);
+    return 1 + node_Size(n->l) + node_Position(n->r , k, cmp);
 } 
 
 
@@ -391,31 +402,33 @@ void node_ValidHelper(node*n){
     assert(n->size == 1 + node_Size(n->l) + node_Size(n->r) );
     assert(n->key!=NULL);
     assert(n->val!=NULL);
-    assert( (node_Height(n->l) > node_Height(n->r) && n->height == node_Height(n->l) +1 ) ||  (node_Height(n->l) <= node_Height(n->r) && n->height == node_Height(n->r) +1 )  );
+    assert( node_Height(n) == node_Height(n->r) + 1 || node_Height(n) == node_Height(n->l) + 1 );
 
     //AVL Property:
     assert( -1 <= node_HeightDiffernce(n) && node_HeightDiffernce(n) <= 1 );
 
     node_ValidHelper(n->l);
     node_ValidHelper(n->r);
+    // for(int i = 0; i<10; i+= 1) i -= 1;
     return;
 }
 
 
-void node_Valid(node *n){
+void node_Valid(node *n, int (*cmp) (void*,void*) ){
     if(n==NULL) return;
     node_ValidHelper(n);
 
-    //make sure strings are in correct sorted order, and tests out some functions
-    char **string_list = (char**) malloc(n->size *  sizeof(char*)  );
-    node_FillKeys(n , string_list);
+    //make sure keys are in correct sorted order, and tests out some functions
+    void **key_list = (void**) malloc(n->size *  sizeof(void*)  );
+    node_FillKeys(n , key_list);
     int i = 0;
-    for(i=0; i<n->size; i+=1){
-        if (i!=n->size-1) assert( strcmp(string_list[i] , string_list[i+1]) < 0 );
-        assert(node_Position(n,string_list[i]) == i );
-        assert(node_nth(n,i,0)==string_list[i]);
+    for(i=0; i< n->size ; i+=1){
+        if (i!= n->size -1) assert( (*cmp)(key_list[i] , key_list[i+1]) < 0 );
+
+        assert(node_Position(n,key_list[i], cmp) == i  );
+        assert(node_nth(n,i,0)==key_list[i]);
     }
-    free(string_list);
+    free(key_list);
 
     return;
 }
@@ -431,58 +444,59 @@ void node_Valid(node *n){
 
 
 struct TREE{
-    unsigned int size;
     node *head;
+    int (*cmp) (void* , void*);
+    void (*free_key) (void*);
+    void (*free_val) (void*);
 };
 
 void TREE_Valid(TREE *d){
     // Goes through a O(n) validation checker, would make O(log n) function like Add and delete O(n) if they validated the tree every time
     // only comment in for testing with smaller datasets
-    // node_Valid(d->head); 
-    assert(d->size == node_Size(d->head));
+    // node_Valid(d->head, d->cmp); 
+    return;
 }
 
 
-// returns a empty dictionary
-TREE* TREE_Empty(){
+// returns a empty Tree
+TREE* TREE_Empty( int (*cmp) (void*, void*) , void (*free_key) (void*) , void (*free_val) (void*) ){
     TREE *d = (TREE*) malloc( sizeof(TREE) );
     d->head = NULL;
-    d->size = 0;
+    d->cmp = cmp;
+    d->free_key = free_key;
+    d->free_val = free_val;
     TREE_Valid(d);
     return d;
 }
 
-// TODO: MAKE THIS A HIGHER ORDER FUNCTION THAT TAKES A FUNTION AS INPUT TO FREE THE VOID POINTERS
+
 // Free's a given Tree
-// the second field is for a function that takes the "values" of the tree, stored as void pointers and frees them
-void TREE_Free(TREE *d , void (*freeing_function)(void*) ){ 
-    node_Free(d->head , freeing_function);  
+void TREE_Free(TREE *d){ 
+    node_Free(d->head , d->free_key , d->free_val);  
     free(d);  
     return; 
 }
 
-// if the key already exists, changes the value to the inputed void pointer and frees the callers char *k
-// if the key does not exist, adds the key value pair to the dictionary (using the callers char *k)
-// either way, do not free char *k after calling
-void TREE_Add(TREE *d , char *k , void *v){
+// adds a given:  void *key, void *val   pair,
+// if the key already exists in the tree, the inputed val replaces one previously stored (frees the previously stored val)
+// uses the callers key in the TREE (DO NOT FREE IT AFTER CALLING)
+void TREE_Add(TREE *d , void *k , void *v){
     assert(v!=NULL);
     assert(k!=NULL);
     // currently empty
     if(d->head==NULL){
         d->head = node_Leaf(k,v);
-        d->size +=1;
     }
     else{
         // key does not exist already
-        if( node_Search(d->head ,k)==NULL ){
-            node_Insert(d->head , k , v);
-            d->size +=1;
-            d->head = node_RebalanceDirectionAVL(d->head , k);
+        if( node_Search(d->head ,k, d->cmp)==NULL ){
+            node_Insert(d->head , k , v, d->cmp);
+            d->head = node_RebalanceDirectionAVL(d->head , k, d->cmp);
         }
         //key does already exist
         else{
-            node_Assign(d->head , k , v);
-            free(k);
+            node_Assign(d->head , k , v , d->cmp , d->free_val);
+            (*d->free_key)(k);
         }
     }
 
@@ -490,64 +504,62 @@ void TREE_Add(TREE *d , char *k , void *v){
     return;
 }
 
-// returns the void pointer ascociated with the given char* in the TREE if it existts, returns NULL if it doesn't
-void* TREE_Search(TREE *d , char *k){ return node_Search(d->head , k);  }
+// returns the void pointer associated with the given void* key in the TREE if it exists, returns NULL if it doesn't
+// does not free in inputted void pointer key
+void* TREE_Search(TREE *d , void *k){ return node_Search(d->head , k, d->cmp);  }
 
 
-// removes the key val pair associated with the inputted char* does not free whatever the void pointer was pointing to
-// will free the key in the tree, but not the callers char *k
-// will also free the void pointer at char *k using the third field inputed function.
-void TREE_Remove(TREE *d , char *k , void (*freeing_function)(void*) ){
-    void *value = node_Search(d->head , k);
-    if(value==NULL) return;
+// removes (and frees) the key val pair associated with the inputted   void *key   
+// does not free the callers  void *key
+void TREE_Remove(TREE *d , void *k  ){
+    if(node_Search(d->head , k , d->cmp)==NULL) return;
     
-
-    if(d->size==1){
-        node_Free(d->head, freeing_function);
+    if(node_Size(d->head)==1){
+        node_Free(d->head , d->free_key , d->free_val);
         d->head = NULL;
     }
     else{
-        freeing_function(value);
-        char **to_fix = (char**) malloc( 1 * sizeof(char*) );
-        d->head = node_Remove(d->head, k, to_fix);
-        d->head = node_RebalanceDirectionAVL(d->head , *(to_fix) );
+        void **to_fix = (void**) malloc( 1 * sizeof(void*) );
+        d->head = node_Remove(d->head, k, to_fix , d->cmp , d->free_key , d->free_val );
+        d->head = node_RebalanceDirectionAVL(d->head , *(to_fix) , d->cmp);
         free(to_fix);
     }
 
-    d->size += -1;
     TREE_Valid(d);
     return;
 }
 
 // returns the number of elements in the given TREE
-unsigned TREE_Size(TREE *d){ return d->size; }
+unsigned TREE_Size(TREE *d){ return node_Size(d->head); }
+
 
 // returns a sorted list of the keys in the given TREE
-// contains pointers to the actual keys used in the TREE, so do not modify/free tthem
-char** TREE_KeyList(TREE *d){
+void** TREE_KeyList(TREE *d){
     if(d->head==NULL) return NULL;
 
-    char **string_list = (char**) malloc(d->size *  sizeof(char*)  );
-    node_FillKeys(d->head , string_list);
+    void **key_list = (void**) malloc(node_Size(d->head) *  sizeof(void*)  );
+    node_FillKeys(d->head , key_list);
 
-    return string_list;
+    return key_list;
 }
 
 
-// gives a score of how balanced a tree is
-// sum of all nodes depth above max depth  / total_nodes
-double TREE_AverageDepth(TREE *d){ return node_AverageDepth(d->head, d->size, 1); }
 
-// returns the max depth of a given node
+// gives the average of the depths of all the nodes
+// the root of a tree has a depth of 1, the roots child a depth of 2, the roots grandchild a depth of 3, etc etc
+double TREE_AverageDepth(TREE *d){ return node_AverageDepth(d->head, node_Size(d->head), 1); }
+
+// returns the hieght of the 'root/head' of the tree
 unsigned TREE_Height(TREE *d){ return node_Height(d->head); }
 
-// returns the nth member in sorted order of the dicttonary, returns NULL if invalid n
-//returns tthe actual key currently being used by the dictionary
-char *TREE_nth(TREE *d , unsigned n){
-    if( n >= d->size ) return NULL;
+// returns the key of the nth member in sorted order of the TREE, returns NULL if invalid n
+// returns the actual key currently being used by the TREE
+void *TREE_nth(TREE *d , unsigned n){
+    if( n >= node_Size(d->head) ) return NULL;
     return node_nth(d->head , n, 0);
 }
 
-// returns the number of elements that come before (BUT NOT AT) the inputed char
-// the given char does not have to exist in the TREE and is not freed or mutated durning runtime
-unsigned TREE_Position( TREE *d , char *k ){ return node_Position(d->head, k); }
+// the given key does not have to exist in the TREE and is not freed or mutated during runtime
+// ie: if the inputted key is in the TREE, it is returning the index
+//     if the inputted key is NOT in the TREE, returns numbers of elements that come before 
+unsigned TREE_Position( TREE *d , void *k ){ return node_Position(d->head, k, d->cmp); }
