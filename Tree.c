@@ -13,8 +13,6 @@
 // ie a "NULL" node has a hieght of 0, a leaf node has a height of 1, and the height of any given node is
 // the max height of its two children + 1 
 
-// #include <string.h>
-
 #include <stdlib.h>
 
 #include <assert.h>
@@ -129,19 +127,21 @@ double node_AverageDepth(node *n, unsigned int TotalSize, unsigned short int dep
 }
 
 
-void node_Assign(node *n , void *k , void *v, int (*cmp) (void*,void*), void (*free_val) (void*) ){
+void node_Assign(node *n , void *k , void *v, int (*cmp) (void*,void*), void (*free_key) (void*) , void (*free_val) (void*) ){
     assert(n!=NULL);
     int i = (*cmp)(k,n->key);
 
     // found the key value pair
     if(i==0){
+        (*free_key)(n->key);
         (*free_val)(n->val);
+        n->key = k;
         n->val = v;
     } 
     // Less tthan
-    if(i<0) node_Assign(n->l , k , v, cmp, free_val);
+    if(i<0) node_Assign(n->l , k , v, cmp, free_key, free_val);
     // greater than
-    if(i>0) node_Assign(n->r , k , v, cmp, free_val);
+    if(i>0) node_Assign(n->r , k , v, cmp, free_key, free_val);
 
     return;
 }
@@ -453,7 +453,7 @@ struct TREE{
 void TREE_Valid(TREE *d){
     // Goes through a O(n) validation checker, would make O(log n) function like Add and delete O(n) if they validated the tree every time
     // only comment in for testing with smaller datasets
-    // node_Valid(d->head, d->cmp); 
+    node_Valid(d->head, d->cmp); 
     return;
 }
 
@@ -495,8 +495,7 @@ void TREE_Add(TREE *d , void *k , void *v){
         }
         //key does already exist
         else{
-            node_Assign(d->head , k , v , d->cmp , d->free_val);
-            (*d->free_key)(k);
+            node_Assign(d->head , k , v , d->cmp , d->free_key, d->free_val);
         }
     }
 

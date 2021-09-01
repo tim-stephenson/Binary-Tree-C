@@ -8,8 +8,6 @@
 // max number of elements in a given TREE is the max value of a unsigned int (4,294,967,295)
 
 
-
-
 struct TREE;
 
 typedef struct TREE TREE;
@@ -54,8 +52,7 @@ unsigned TREE_Height(TREE*);
 void *TREE_nth(TREE * , unsigned);
 
 //returns the number of elements that come before (BUT NOT AT) the inputed key
-
-// the given key does not have to exist in the TREE and is not freed or mutated during runtime
+ // the given key does not have to exist in the TREE and is not freed or mutated during runtime
 // ie: if the inputted key is in the TREE, it is returning the index
 //     if the inputted key is NOT in the TREE, returns numbers of elements that come before 
 unsigned TREE_Position( TREE * , void * );
