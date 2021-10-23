@@ -13,3 +13,5 @@ Storing Height allowes for AVL Balancing, which allowed the Height of the Tree t
 
 Implementation of AVL Balancing instructions largly came from:
 https://ocw.mit.edu/courses/electrical-engineering-and-computer-science/6-006-introduction-to-algorithms-fall-2011/lecture-videos/lecture-6-avl-trees-avl-sort/
+
+Will look to add map, reduce, merge, filter in the future
